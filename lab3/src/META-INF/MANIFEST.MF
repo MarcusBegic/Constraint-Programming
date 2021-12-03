@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+mode: development
+Package: org.jacop
+Built-By: radek
+Created-By: Apache Maven 3.6.0
+Build-Jdk: 1.8.0_191
+url: http://jacop.osolpro.com
+Main-Class: org.jacop.examples.RunExample
+
