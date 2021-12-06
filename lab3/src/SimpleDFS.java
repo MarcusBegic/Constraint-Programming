@@ -1,9 +1,9 @@
 /**
- *  SimpleDFS.java 
+ *  SimpleDFS.java
  *  This file is part of JaCoP.
  *
- *  JaCoP is a Java Constraint Programming solver. 
- *	
+ *  JaCoP is a Java Constraint Programming solver.
+ *
  *	Copyright (C) 2000-2015 Krzysztof Kuchcinski and Radoslaw Szymanek
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU Affero General Public License for more details.
- *  
+ *
  *  Notwithstanding any other provision of this License, the copyright
  *  owners of this work supplement the terms of this License with terms
  *  prohibiting misrepresentation of the origin of this work and requiring
@@ -39,7 +39,7 @@ import org.jacop.core.Store;
 
 /**
  * Implements Simple Depth First Search .
- * 
+ *
  * @author Krzysztof Kuchcinski
  * @version 4.2
  */
@@ -93,9 +93,9 @@ public class SimpleDFS  {
      */
     public boolean label(IntVar[] vars) {
 	N++;
-	
+
 	if (trace) {
-	    for (int i = 0; i < vars.length; i++) 
+	    for (int i = 0; i < vars.length; i++)
 		System.out.print (vars[i] + " ");
 	    System.out.println ();
 	}
@@ -117,7 +117,7 @@ public class SimpleDFS  {
 	}
 
 	consistent = store.consistency();
-		
+
 	if (!consistent) {
 	    // Failed leaf of the search tree
 	    return false;
@@ -142,7 +142,7 @@ public class SimpleDFS  {
 	    store.impose(choice.getConstraint());
 
 	    // choice point imposed.
-			
+
 	    consistent = label(choice.getSearchVariables());
 
             if (consistent) {
@@ -156,7 +156,7 @@ public class SimpleDFS  {
 		store.impose(new Not(choice.getConstraint()));
 
 		// negated choice point imposed.
-		
+
 		consistent = label(vars);
 
 		levelDown();
@@ -190,66 +190,66 @@ public class SimpleDFS  {
 	if (costVariable != null)
 	    System.out.println ("Cost is " + costVariable);
 
-	for (int i = 0; i < variablesToReport.length; i++) 
+	for (int i = 0; i < variablesToReport.length; i++)
 	    System.out.print (variablesToReport[i] + " ");
 	System.out.println ("\n---------------");
     }
 
     public void setVariablesToReport(IntVar[] v) {
-	variablesToReport = v;
+	       variablesToReport = v;
     }
 
     public void setCostVariable(IntVar v) {
-	costVariable = v;
+	       costVariable = v;
     }
 
     public class ChoicePoint {
 
-	IntVar var;
-	IntVar[] searchVariables;
-	int value;
+    	IntVar var;
+    	IntVar[] searchVariables;
+    	int value;
 
-	public ChoicePoint (IntVar[] v) {
-	    var = selectVariable(v);
-	    value = selectValue(var);
-	}
+    	public ChoicePoint (IntVar[] v) {
+    	    var = selectVariable(v);
+    	    value = selectValue(var);
+    	}
 
-	public IntVar[] getSearchVariables() {
-	    return searchVariables;
-	}
+    	public IntVar[] getSearchVariables() {
+    	    return searchVariables;
+    	}
 
-	/**
-	 * example variable selection; input order
-	 */ 
-	IntVar selectVariable(IntVar[] v) {
-	    if (v.length != 0) {
+    	/**
+    	 * example variable selection; input order
+    	 */
+    	IntVar selectVariable(IntVar[] v) {
+    	    if (v.length != 0) {
 
-		searchVariables = new IntVar[v.length-1];
-		for (int i = 0; i < v.length-1; i++) {
-		    searchVariables[i] = v[i+1]; 
-		}
+    		searchVariables = new IntVar[v.length-1];
+    		for (int i = 0; i < v.length-1; i++) {
+    		    searchVariables[i] = v[i+1];
+    		}
 
-		return v[0];
+    		return v[0];
 
-	    }
-	    else {
-		System.err.println("Zero length list of variables for labeling");
-		return new IntVar(store);
-	    }
-	}
+    	    }
+    	    else {
+    		System.err.println("Zero length list of variables for labeling");
+    		return new IntVar(store);
+    	    }
+    	}
 
-	/**
-	 * example value selection; indomain_min
-	 */ 
-	int selectValue(IntVar v) {
-	    return v.min();
-	}
+    	/**
+    	 * example value selection; indomain_min
+    	 */
+    	int selectValue(IntVar v) {
+    	    return v.min();
+    	}
 
-	/**
-	 * example constraint assigning a selected value
-	 */
-	public PrimitiveConstraint getConstraint() {
-	    return new XeqC(var, value);
-	}
+    	/**
+    	 * example constraint assigning a selected value
+    	 */
+    	public PrimitiveConstraint getConstraint() {
+    	    return new XeqC(var, value);
+    	}
     }
 }
