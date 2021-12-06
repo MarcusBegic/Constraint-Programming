@@ -94,82 +94,81 @@ public class SplitSearch  {
      * This function is called recursively to assign variables one by one.
      */
     public boolean label(IntVar[] vars) {
-	       N++;
+	    N++;
 
-	if (trace) {
-	    for (int i = 0; i < vars.length; i++)
-		System.out.print (vars[i] + " ");
-	    System.out.println ();
-	}
+    	if (trace) {
+    	    for (int i = 0; i < vars.length; i++)
+    		System.out.print (vars[i] + " ");
+    	    System.out.println ();
+    	}
 
-	ChoicePoint choice = null;
-	boolean consistent;
+    	ChoicePoint choice = null;
+    	boolean consistent;
 
-	// Instead of imposing constraint just restrict bounds
-	// -1 since costValue is the cost of last solution
-	if (costVariable != null) {
-	    try {
-		if (costVariable.min() <= costValue - 1)
-		    costVariable.domain.in(store.level, costVariable, costVariable.min(), costValue - 1);
-		else
-		    return false;
-	    } catch (FailException f) {
-		return false;
-	    }
-	}
+    	// Instead of imposing constraint just restrict bounds
+    	// -1 since costValue is the cost of last solution
+    	if (costVariable != null) {
+    	    try {
+    		if (costVariable.min() <= costValue - 1)
+    		    costVariable.domain.in(store.level, costVariable, costVariable.min(), costValue - 1);
+    		else
+    		    return false;
+    	    } catch (FailException f) {
+    		return false;
+    	    }
+    	}
 
-	consistent = store.consistency();
+    	consistent = store.consistency();
 
-	if (!consistent) {
-	    // Failed leaf of the search tree
-	    return false;
-	} else { // consistent
+    	if (!consistent) {
+    	    // Failed leaf of the search tree
+    	    return false;
+    	} else { // consistent
 
-	    if (vars.length == 0) {
-		// solution found; no more variables to label
+    	    if (vars.length == 0) {
+    		// solution found; no more variables to label
 
-		// update cost if minimization
-		if (costVariable != null)
-		    costValue = costVariable.min();
+    		// update cost if minimization
+    		if (costVariable != null)
+    		    costValue = costVariable.min();
 
-		reportSolution();
+    		reportSolution();
 
-		return costVariable == null; // true is satisfiability search and false if minimization
-	    }
+    		return costVariable == null; // true is satisfiability search and false if minimization
+    	    }
 
- 	    choice = new ChoicePoint(vars);
+     	    choice = new ChoicePoint(vars);
 
-	    levelUp();
+    	    levelUp();
 
-	    store.impose(choice.getConstraint());
+    	    store.impose(choice.getConstraint());
 
-	    // choice point imposed.
+    	    // choice point imposed.
 
-	    consistent = label(choice.getSearchVariables());
+    	    consistent = label(choice.getSearchVariables());
 
             if (consistent) {
-		levelDown();
-		return true;
-	    } else {
-		failedNodes++;
+    	          levelDown();
+    	          return true;
+    	    } else {
 
-		restoreLevel();
+        		restoreLevel();
 
-		store.impose(new Not(choice.getConstraint()));
+        		store.impose(new Not(choice.getConstraint()));
 
-		// negated choice point imposed.
+        		// negated choice point imposed.
 
-		consistent = label(vars);
+        		consistent = label(vars);
 
-		levelDown();
+        		levelDown();
 
-		if (consistent) {
-		    return true;
-		} else {
-		    return false;
-		}
-	    }
-	  }
+        		if (consistent) {
+        		    return true;
+        		} else {
+        		    return false;
+        		}
+    	    }
+    	  }
     }
 
     void levelDown() {
@@ -208,7 +207,7 @@ public class SplitSearch  {
 
     public class ChoicePoint {
 
-        int selectionOption = 1; /* This can be either 0 or 1 depending on seleciton */
+        int selectionOption = 2; /* This can be either 0 or 1 depending on seleciton */
 
     	IntVar var;
     	IntVar[] searchVariables;
@@ -225,36 +224,64 @@ public class SplitSearch  {
 
         public int selectValue(IntVar v) {
             switch(selectionOption) {
-                case 0:
-                    return stratOne(v);
                 case 1:
-                    return stratTwo(v);
+                    return lowerBoundC(v);
+                case 2:
+                    return upperBoundC(v);
                 default:
                     return v.min();
             }
         }
 
         /* Floors the value */
-        private int stratOne(IntVar v) {
+        private int lowerBoundC(IntVar v) {
             return (v.max() + v.min())/2;
         }
 
         /* Ceils the value */
-        private int stratTwo(IntVar v) {
+        private int upperBoundC(IntVar v) {
             return (int) Math.ceil((v.max()*1.0 + v.min()*1.0)/(2*1.0));
         }
 
     	/**
     	 * example variable selection; input order
+         *
+         * Need to change variable when we find that v[i].min() == v[i].max()
+         * i.e. update searchVariables containing everything but v[i]
+         *
+         * We simply return the IntVar with smallest set cardinality
     	 */
+        private int getMinIndex(IntVar[] v) {
+            int minIndex = 0, minSize = Integer.MAX_VALUE;
+            for(int i = 1; i < v.length; i++) {
+                if (v[minIndex].getSize() < v[i].getSize()){
+                    minIndex = i;
+                    minSize = v[i].getSize();
+                }
+            }
+            return minIndex;
+
+        }
+
     	IntVar selectVariable(IntVar[] v) {
     	    if (v.length != 0) {
         		searchVariables = new IntVar[v.length-1];
-        		for (int i = 0; i < v.length-1; i++) {
-        		    searchVariables[i] = v[i+1];
-        		}
+                int minIndex = getMinIndex(v);
+                if (v[minIndex].min() == v[minIndex].max()) {
+                    int i;
+                    for (i = 0; i < minIndex; i++) {
+            		    searchVariables[i] = v[i];
+            		}
 
-        		return v[0];
+                    for (i = minIndex + 1; i < v.length; i++) {
+                        searchVariables[i-1] = v[i]; // remove the variable with stabilized c value
+                    }
+
+                    return v[minIndex];
+                }
+
+                searchVariables = v;
+                return v[minIndex];
     	    } else {
         		System.err.println("Zero length list of variables for labeling");
         		return new IntVar(store);
