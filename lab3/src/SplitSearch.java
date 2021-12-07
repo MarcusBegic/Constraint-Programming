@@ -269,13 +269,11 @@ public class SplitSearch  {
                 int minIndex = getMinIndex(v);
                 if (v[minIndex].min() == v[minIndex].max()) {
                     int i;
-                    for (i = 0; i < minIndex; i++) {
+                    for (i = 0; i < minIndex; i++)
             		    searchVariables[i] = v[i];
-            		}
 
-                    for (i = minIndex + 1; i < v.length; i++) {
+                    for (i = minIndex + 1; i < v.length; i++)
                         searchVariables[i-1] = v[i]; // remove the variable with stabilized c value
-                    }
 
                     return v[minIndex];
                 }
