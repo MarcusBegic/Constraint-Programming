@@ -1,9 +1,9 @@
 /**
- *  Golomb.java 
+ *  Golomb.java
  *  This file is part of JaCoP.
  *
- *  JaCoP is a Java Constraint Programming solver. 
- *	
+ *  JaCoP is a Java Constraint Programming solver.
+ *
  *	Copyright (C) 2000-2008 Krzysztof Kuchcinski and Radoslaw Szymanek
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU Affero General Public License for more details.
- *  
+ *
  *  Notwithstanding any other provision of this License, the copyright
  *  owners of this work supplement the terms of this License with terms
  *  prohibiting misrepresentation of the origin of this work and requiring
@@ -48,12 +48,12 @@ import org.jacop.search.Search;
 import org.jacop.search.SelectChoicePoint;
 
 /**
- * 
+ *
  * It models a Golomb ruler problem.
- * 
+ *
  * @author Radoslaw Szymanek and Krzysztof Kuchcinski
  *
- * 
+ *
  * Golomb ruler is a special sequence of natural numbers
  * an example is 0 1 4 6
  *
@@ -71,7 +71,7 @@ public class Golomb {
     Store store;
 
     /**
-     * It specifies the number of marks (number of natural numbers in 
+     * It specifies the number of marks (number of natural numbers in
      * the sequence).
      */
     public int noMarks = 10;
@@ -81,24 +81,24 @@ public class Golomb {
      */
     public int bound = -1;
 
-	
+
     /**
      * It contains all differences between all possible pairs of marks.
      */
     public ArrayList<IntVar> subs = new ArrayList<IntVar>();
-	
+
     /**
-     * It executes the program which computes the optimal Golomb ruler. 
-     * 
+     * It executes the program which computes the optimal Golomb ruler.
+     *
      * @param args the first argument specifies the number of marks, the second argument specifies the upper bound of the optimal solution.
      */
     public static void main(String args[]) {
-		
+
 	Golomb example = new Golomb();
-		
+
 	example.model();
 
-    }			
+    }
 
     public void model() {
 
@@ -107,7 +107,7 @@ public class Golomb {
 
 	store = new Store();
 	ArrayList<IntVar> vars = new ArrayList<IntVar>();
-		
+
 	IntVar numbers[] = new IntVar[noMarks];
 
 	for (int i = 0; i < numbers.length; i++) {
@@ -126,7 +126,7 @@ public class Golomb {
 
 	for (IntVar v : numbers)
 	    vars.add(v);
-		
+
 	if (bound > -1)
 	    store.impose(new XlteqC(numbers[noMarks - 1], bound));
 
@@ -178,10 +178,11 @@ public class Golomb {
 
 	System.out.println("Total number of visited nodes = " + search.N);
 	System.out.println("Total number of failed nodes = " + search.failedNodes);
-	
+
+    System.out.println("Cost is " + search.costValue);
 	System.out.println (result);
 
     }
-	
-	
+
+
 }

@@ -21,5 +21,5 @@ constraint forall (i in 1..n_prefs) (
 solve minimize max(d); % find the minimum maximum in distance array
 
 
-output["RESULT :", show(max(d))]
+%output["RESULT :", show(max(d))]
 

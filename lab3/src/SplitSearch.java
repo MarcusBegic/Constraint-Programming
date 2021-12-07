@@ -1,121 +1,296 @@
+/**
+ *  SimpleDFS.java
+ *  This file is part of JaCoP.
+ *
+ *  JaCoP is a Java Constraint Programming solver.
+ *
+ *	Copyright (C) 2000-2015 Krzysztof Kuchcinski and Radoslaw Szymanek
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  Notwithstanding any other provision of this License, the copyright
+ *  owners of this work supplement the terms of this License with terms
+ *  prohibiting misrepresentation of the origin of this work and requiring
+ *  that modified versions of this work be marked in reasonable ways as
+ *  different from the original version. This supplement of the license
+ *  terms is in accordance with Section 7 of GNU Affero General Public
+ *  License version 3.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
-
-import java.util.ArrayList;
-
-import org.jacop.constraints.Alldiff;
+import org.jacop.constraints.Not;
+import org.jacop.constraints.PrimitiveConstraint;
 import org.jacop.constraints.XeqC;
-import org.jacop.constraints.XltY;
+import org.jacop.constraints.XgteqC;
 import org.jacop.constraints.XlteqC;
-import org.jacop.constraints.XplusClteqZ;
-import org.jacop.constraints.XplusYeqZ;
+
+import org.jacop.core.FailException;
+import org.jacop.core.IntDomain;
 import org.jacop.core.IntVar;
 import org.jacop.core.Store;
-import org.jacop.search.DepthFirstSearch;
-import org.jacop.search.IndomainMin;
-import org.jacop.search.InputOrderSelect;
-import org.jacop.search.PrintOutListener;
-import org.jacop.search.Search;
-import org.jacop.search.SelectChoicePoint;
 
-public class SplitSearch {
+/**
+ * Start is based on the given SimpleDFS class
+ *
+ * @author Krzysztof Kuchcinski, Fredrik Horn Dannert, Marcus Begic
+ */
+
+public class SplitSearch  {
+
     boolean trace = false;
 
+    /**
+     * Store used in search
+     */
     Store store;
-    IntVar[] numbers;
-    IntVar cost;
 
-    int N = 0; /* This represents the total number of nodes*/
-    int failedNodes = 0; 
+    /**
+     * Defines varibales to be printed when solution is found
+     */
+    IntVar[] variablesToReport;
 
-    public SplitSearch(Store store) {
-        this.store = store;
+    /**
+     * It represents current depth of store used in search.
+     */
+    int depth = 0;
+
+    /**
+     * It represents the cost value of currently best solution for FloatVar cost.
+     */
+    public int costValue = IntDomain.MaxInt;
+
+    /**
+     * It represents the cost variable.
+     */
+    public IntVar costVariable = null;
+
+    /*
+     * Number of visited nodes
+     */
+    public long N=0;
+
+    /*
+     * Number of failed nodes excluding leave nodes
+     */
+    public long failedNodes = 0;
+
+    public SplitSearch(Store s) {
+	       store = s;
     }
 
-    public void setVariablesToReport(IntVar nums) {        
-        this.numbers = nums;
+
+    /**
+     * This function is called recursively to assign variables one by one.
+     */
+    public boolean label(IntVar[] vars) {
+	    N++;
+
+    	if (trace) {
+    	    for (int i = 0; i < vars.length; i++)
+    		System.out.print (vars[i] + " ");
+    	    System.out.println ();
+    	}
+
+    	ChoicePoint choice = null;
+    	boolean consistent;
+
+    	// Instead of imposing constraint just restrict bounds
+    	// -1 since costValue is the cost of last solution
+    	if (costVariable != null) {
+    	    try {
+    		if (costVariable.min() <= costValue - 1)
+    		    costVariable.domain.in(store.level, costVariable, costVariable.min(), costValue - 1);
+    		else
+    		    return false;
+    	    } catch (FailException f) {
+    		return false;
+    	    }
+    	}
+
+    	consistent = store.consistency();
+
+    	if (!consistent) {
+    	    // Failed leaf of the search tree
+    	    return false;
+    	} else { // consistent
+
+    	    if (vars.length == 0) {
+    		// solution found; no more variables to label
+
+    		// update cost if minimization
+    		if (costVariable != null)
+    		    costValue = costVariable.min();
+
+    		reportSolution();
+
+    		return costVariable == null; // true is satisfiability search and false if minimization
+    	    }
+
+     	    choice = new ChoicePoint(vars);
+
+    	    levelUp();
+
+    	    store.impose(choice.getConstraint());
+
+    	    // choice point imposed.
+
+    	    consistent = label(choice.getSearchVariables());
+
+            if (consistent) {
+    	          levelDown();
+    	          return true;
+    	    } else {
+
+        		restoreLevel();
+
+        		store.impose(new Not(choice.getConstraint()));
+
+        		// negated choice point imposed.
+
+        		consistent = label(vars);
+
+        		levelDown();
+
+        		if (consistent) {
+        		    return true;
+        		} else {
+        		    return false;
+        		}
+    	    }
+    	  }
     }
 
-    public void setCostVariable(IntVar c) {
-        this.cost = c;
+    void levelDown() {
+	     store.removeLevel(depth);
+	     store.setLevel(--depth);
     }
 
-    public boolean label(IntVar[] nums) {
-        N++; // Another node has now been visited, increase total number of nodes
+    void levelUp() {
+	     store.setLevel(++depth);
+    }
 
-        if (trace) { // Report if trace enabled
-            for (int i = 0; i < vars.length; i++) 
-            System.out.print (vars[i] + " ");
-            System.out.println ();
-        }
+    void restoreLevel() {
+	    store.removeLevel(depth);
+	    store.setLevel(store.level);
+        failedNodes++;
+    }
 
-        ChoicePoint choice = null; // new potential choice point
-        boolean consistent;  // consistent variable
+    public void reportSolution() {
+	System.out.println("Nodes visited: " + N);
 
-        if (costVariable != null) {
-            try {
-                if (costVariable.min() <= costValue - 1)
-                    costVariable.domain.in(store.level, costVariable, costVariable.min(), costValue - 1);
-                else
-                    return false;
-            } catch (FailException f) {
-                return false;
+	if (costVariable != null)
+	    System.out.println ("Cost is " + costVariable);
+
+	for (int i = 0; i < variablesToReport.length; i++)
+	    System.out.print (variablesToReport[i] + " ");
+	System.out.println ("\n---------------");
+    }
+
+    public void setVariablesToReport(IntVar[] v) {
+	       variablesToReport = v;
+    }
+
+    public void setCostVariable(IntVar v) {
+	       costVariable = v;
+    }
+
+    public class ChoicePoint {
+
+        int selectionOption = 2; /* This can be either 0 or 1 depending on seleciton */
+
+    	IntVar var;
+    	IntVar[] searchVariables;
+    	int value;
+
+    	public ChoicePoint (IntVar[] v) {
+    	    var = selectVariable(v);
+    	    value = selectValue(var);
+    	}
+
+    	public IntVar[] getSearchVariables() {
+    	    return searchVariables;
+    	}
+
+        public int selectValue(IntVar v) {
+            switch(selectionOption) {
+                case 1:
+                    return lowerBoundC(v);
+                case 2:
+                    return upperBoundC(v);
+                default:
+                    return v.min();
             }
         }
 
-
-        consistent = store.consistency();
-        if (!consistent) {
-            // Failed leaf of the search tree
-            return false;
-        } else { // consistent
-    
-            if (vars.length == 0) {
-                // solution found; no more variables to label
-        
-                // update cost if minimization
-                    if (costVariable != null)
-                        costValue = costVariable.min();
-            
-                    reportSolution();
-            
-                    return costVariable == null; // true is satisfiability search and false if minimization
-                }
-        
-                choice = new ChoicePoint(vars);
-        
-                levelUp();
-        
-                store.impose(choice.getConstraint());
-        
-                // choice point imposed.
-                    
-                consistent = label(choice.getSearchVariables());
-        
-                    if (consistent) {
-                levelDown();
-                return true;
-                
-            } else {
-                failedNodes++;
-        
-                restoreLevel();
-        
-                store.impose(new Not(choice.getConstraint()));
-        
-                // negated choice point imposed.
-                
-                consistent = label(vars);
-        
-                levelDown();
-        
-                if (consistent) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+        /* Floors the value */
+        private int lowerBoundC(IntVar v) {
+            return (v.max() + v.min())/2;
         }
 
-        return false;
-    } 
+        /* Ceils the value */
+        private int upperBoundC(IntVar v) {
+            return (int) Math.ceil((v.max()*1.0 + v.min()*1.0)/(2*1.0));
+        }
+
+    	/**
+    	 * example variable selection; input order
+         *
+         * Need to change variable when we find that v[i].min() == v[i].max()
+         * i.e. update searchVariables containing everything but v[i]
+         *
+         * We simply return the IntVar with smallest set cardinality
+    	 */
+        private int getMinIndex(IntVar[] v) {
+            int minIndex = 0, minSize = Integer.MAX_VALUE;
+            for(int i = 1; i < v.length; i++) {
+                if (v[minIndex].getSize() < v[i].getSize()){
+                    minIndex = i;
+                    minSize = v[i].getSize();
+                }
+            }
+            return minIndex;
+
+        }
+
+    	IntVar selectVariable(IntVar[] v) {
+    	    if (v.length != 0) {
+        		searchVariables = new IntVar[v.length-1];
+                int minIndex = getMinIndex(v);
+                if (v[minIndex].min() == v[minIndex].max()) {
+                    int i;
+                    for (i = 0; i < minIndex; i++)
+            		    searchVariables[i] = v[i];
+
+                    for (i = minIndex + 1; i < v.length; i++)
+                        searchVariables[i-1] = v[i]; // remove the variable with stabilized c value
+
+                    return v[minIndex];
+                }
+
+                searchVariables = v;
+                return v[minIndex];
+    	    } else {
+        		System.err.println("Zero length list of variables for labeling");
+        		return new IntVar(store);
+    	    }
+    	}
+
+    	/**
+    	 * example constraint assigning a selected value
+    	 */
+    	public PrimitiveConstraint getConstraint() {
+            return selectionOption==1 ? new XlteqC(var,value) : ( selectionOption==2  ? new XgteqC(var,value) : new XeqC(var,value) );
+    	}
+    }
 }
