@@ -207,7 +207,7 @@ public class SplitSearch  {
 
     public class ChoicePoint {
 
-        int selectionOption = 2; /* This can be either 0 or 1 depending on seleciton */
+        int selectionOption = 1; /* This can be either 0 or 1 depending on seleciton */
 
     	IntVar var;
     	IntVar[] searchVariables;
@@ -254,7 +254,7 @@ public class SplitSearch  {
         private int getMinIndex(IntVar[] v) {
             int minIndex = 0, minSize = Integer.MAX_VALUE;
             for(int i = 1; i < v.length; i++) {
-                if (v[minIndex].getSize() < v[i].getSize()){
+                if (v[minIndex].getSize() < v[i].getSize() && v[i].getSize() != 1){
                     minIndex = i;
                     minSize = v[i].getSize();
                 }
@@ -266,20 +266,20 @@ public class SplitSearch  {
     	IntVar selectVariable(IntVar[] v) {
     	    if (v.length != 0) {
         		searchVariables = new IntVar[v.length-1];
-                int minIndex = getMinIndex(v);
-                if (v[minIndex].min() == v[minIndex].max()) {
+                //int minIndex = getMinIndex(v);
+                if (v[0].min() == v[0].max()) {
                     int i;
-                    for (i = 0; i < minIndex; i++)
-            		    searchVariables[i] = v[i];
+                    // for (i = 0; i < minIndex; i++)
+            		//     searchVariables[i] = v[i];
 
-                    for (i = minIndex + 1; i < v.length; i++)
+                    for (i = 1; i < v.length; i++)
                         searchVariables[i-1] = v[i]; // remove the variable with stabilized c value
 
-                    return v[minIndex];
+                    return v[0];
                 }
 
                 searchVariables = v;
-                return v[minIndex];
+                return v[0];
     	    } else {
         		System.err.println("Zero length list of variables for labeling");
         		return new IntVar(store);
@@ -290,7 +290,11 @@ public class SplitSearch  {
     	 * example constraint assigning a selected value
     	 */
     	public PrimitiveConstraint getConstraint() {
-            return selectionOption==1 ? new XlteqC(var,value) : ( selectionOption==2  ? new XgteqC(var,value) : new XeqC(var,value) );
+            return selectionOption==1 ?
+                        new XlteqC(var,value) :
+                        (selectionOption==2  ?
+                                    new XgteqC(var,value) :
+                                    new XeqC(var,value));
     	}
     }
 }
