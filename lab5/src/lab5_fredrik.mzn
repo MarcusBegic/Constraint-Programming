@@ -13,35 +13,36 @@ int: residential = 1;  % residential will be 0
 % commercial and residential lots
 
 include "globals.mzn";
+include "input_files/urban_7.dzn";
 
 array[1..n, 1..n] of var 0..1: matrix;
 
-array[1..n] of var int: res_rows;
-array[1..n] of var int: res_cols;
+array[1..n] of var int: res_rows = [sum(matrix[i,1..n]) | i in 1..n];
+array[1..n] of var int: res_cols = [sum(matrix[1..n, i]) | i in 1..n];
 
 % need a constraint to ensure that the count of '0' in row i matches
 % the ith index in res_rows and vice versa with res_cols
 
-constraint lex2(matrix);
+% constraint forall(i in 1..n) (
+%             let {
+%               var bool: a = count(row(matrix, i), residential, res_rows[i]); 
+%               var bool: b = count(col(matrix, i), residential, res_cols[i]);
+%                 } in a \/ b
+% );
 
-constraint forall(i in 1..n) (
-            let {
-              var bool: a = count(row(matrix, i), residential, res_rows[i]); 
-              var bool: b = count(col(matrix, i), residential, res_cols[i]);
-                } in a \/ b
-);
-
-array[int] of var int: row_points = [point_distribution[res_rows[i]] | i in 1..n];
-array[int] of var int: col_points = [point_distribution[res_cols[i]] | i in 1..n];
+array[int] of var int: row_points = [point_distribution[res_rows[i] + 1] | i in 1..n];
+array[int] of var int: col_points = [point_distribution[res_cols[i] + 1] | i in 1..n];
 
 var int: num_res = sum(res_rows);
-constraint num_res = n_residential;
+
+% assert number of residential and commerical is equal to matrix size
+constraint lex2(matrix); % break symmetry
+constraint sum(i in 1..n, j in 1..n)(matrix[i,j]=commercial)=n_commercial;
+constraint sum(i in 1..n, j in 1..n)(matrix[i,j]=residential)=n_residential;
 
 var int: sum_row = sum(row_points);
 var int: sum_col = sum(col_points);
-var int: total_cost;
-
-constraint total_cost = sum_row + sum_col;
+var int: total_cost = sum_row + sum_col;
 
 solve maximize total_cost;
 
@@ -49,5 +50,3 @@ solve maximize total_cost;
 output["point distribution := ", show(point_distribution), 
        "matrix := ", show(matrix), 
        " and total cost ", show(total_cost)];
-
-
